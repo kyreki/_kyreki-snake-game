@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game</title>
+    <style>
+        body {
+            background-color: #222;
+            color: white;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        canvas {
+            border: 2px solid #fff;
+            display: block;
+        }
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 32px;
+            text-align: center;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            animation: fadeIn 1s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .restart-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .restart-btn:hover {
+            background-color: #45a049;
+        }
+
+        .color-ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 2;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        #snakeColor, #appleColor {
+            width: 40px;
+            height: 40px;
+            border: none;
+            padding: 5px;
+        }
+
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+    <div class="color-ui">
+        <label for="snakeColor">Snake Color:</label>
+        <input type="color" id="snakeColor" value="#00FF00">
+        <br><br>
+        <label for="appleColor">Apple Color:</label>
+        <input type="color" id="appleColor" value="#FF0000">
+    </div>
+
+    <div class="game-over" id="gameOverScreen" style="display: none;">
+        <h2>Game Over!</h2>
+        <p id="finalScore"></p>
+        <button class="restart-btn" onclick="restartGame()">Restart</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const finalScoreText = document.getElementById('finalScore');
+        const gridSize = 20;
+        let snake = [{x: 10, y: 10}];
+        let snakeDirection = 'RIGHT';
+        let apple = {x: 5, y: 5};
+        let score = 0;
+        let speed = 200;
+        let gameInterval;
+        let snakeColor = '#00FF00';
+        let appleColor = '#FF0000';
+        let tailEffect = false;
+
+        const eatSound = new Audio('eat-sound.mp3');
+        const crashSound = new Audio('crash-sound.mp3');
+        const gameOverSound = new Audio('game-over-sound.mp3');
+
+        const snakeColorInput = document.getElementById('snakeColor');
+        const appleColorInput = document.getElementById('appleColor');
+
+        snakeColor = snakeColorInput.value;
+        appleColor = appleColorInput.value;
+
+        snakeColorInput.addEventListener('input', () => {
+            snakeColor = snakeColorInput.value;
+        });
+
+        appleColorInput.addEventListener('input', () => {
+            appleColor = appleColorInput.value;
+        });
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = 0; i < snake.length; i++) {
+                ctx.fillStyle = snakeColor;
+                ctx.fillRect(snake[i].x * gridSize, snake[i].y * gridSize, gridSize, gridSize);
+            }
+
+            ctx.fillStyle = appleColor;
+            ctx.fillRect(apple.x * gridSize, apple.y * gridSize, gridSize, gridSize);
+
+            ctx.fillStyle = 'white';
+            ctx.font = '20px Arial';
+            ctx.fillText('Score: ' + score, 10, 30);
+
+            if (tailEffect) {
+                let trailLength = 5;
+                ctx.fillStyle = 'rgba(0, 255, 0, 0.5)';
+                for (let i = 1; i <= trailLength; i++) {
+                    if (snake[i]) {
+                        ctx.fillRect(snake[i].x * gridSize, snake[i].y * gridSize, gridSize, gridSize);
+                    }
+                }
+            }
+        }
+
+        function update() {
+            const head = {x: snake[0].x, y: snake[0].y};
+
+            if (snakeDirection === 'LEFT') head.x--;
+            if (snakeDirection === 'RIGHT') head.x++;
+            if (snakeDirection === 'UP') head.y--;
+            if (snakeDirection === 'DOWN') head.y++;
+
+            snake.unshift(head);
+
+            if (head.x === apple.x && head.y === apple.y) {
+                eatSound.play();
+                score++;
+                spawnApple();
+                if (score % 5 === 0) {
+                    clearInterval(gameInterval);
+                    speed -= 20;
+                    gameInterval = setInterval(gameLoop, speed);
+                }
+            } else {
+                snake.pop();
+            }
+
+            if (head.x < 0 || head.x >= canvas.width / gridSize || head.y < 0 || head.y >= canvas.height / gridSize) {
+                crashSound.play();
+                gameOver();
+            }
+
+            for (let i = 1; i < snake.length; i++) {
+                if (head.x === snake[i].x && head.y === snake[i].y) {
+                    crashSound.play();
+                    gameOver();
+                }
+            }
+
+            draw();
+        }
+
+        function spawnApple() {
+            apple = {
+                x: Math.floor(Math.random() * (canvas.width / gridSize)),
+                y: Math.floor(Math.random() * (canvas.height / gridSize))
+            };
+        }
+
+        function gameLoop() {
+            update();
+        }
+
+        function gameOver() {
+            clearInterval(gameInterval);
+            gameOverSound.play();
+            finalScoreText.textContent = 'Your Score: ' + score;
+            gameOverScreen.style.display = 'block';
+        }
+
+        function restartGame() {
+            snake = [{x: 10, y: 10}];
+            snakeDirection = 'RIGHT';
+            score = 0;
+            speed = 200;
+            gameOverScreen.style.display = 'none';
+            gameInterval = setInterval(gameLoop, speed);
+        }
+
+        function setDirection(event) {
+            if (event.key === 'a' && snakeDirection !== 'RIGHT') snakeDirection = 'LEFT';
+            if (event.key === 'd' && snakeDirection !== 'LEFT') snakeDirection = 'RIGHT';
+            if (event.key === 'w' && snakeDirection !== 'DOWN') snakeDirection = 'UP';
+            if (event.key === 's' && snakeDirection !== 'UP') snakeDirection = 'DOWN';
+        }
+
+        let touchStartX, touchStartY;
+        canvas.addEventListener('touchstart', function (e) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        });
+
+        canvas.addEventListener('touchmove', function (e) {
+            let touchEndX = e.touches[0].clientX;
+            let touchEndY = e.touches[0].clientY;
+
+            if (Math.abs(touchEndX - touchStartX) > Math.abs(touchEndY - touchStartY)) {
+                if (touchEndX < touchStartX) setDirection({key: 'a'});
+                else setDirection({key: 'd'});
+            } else {
+                if (touchEndY < touchStartY) setDirection({key: 'w'});
+                else setDirection({key: 's'});
+            }
+            touchStartX = touchEndX;
+            touchStartY = touchEndY;
+        });
+
+        document.addEventListener('keydown', setDirection);
+
+        spawnApple();
+        gameInterval = setInterval(gameLoop, speed);
+    </script>
+</body>
+</html>
