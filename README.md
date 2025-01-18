@@ -68,7 +68,7 @@ Special thanks to All Contributors!
 
 ## 🌐 Demo 🌐
 
-
+https://demo-kyreki-snake-game.netlify.app/
 
 ---
 ## 📸 Screenshots 📸
